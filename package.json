@@ -1,0 +1,27 @@
+{
+  "name": "lms-paymentgateway",
+  "version": "1.0.0",
+  "description": "A backend lms application",
+  "keywords": [
+    "backend",
+    "payment-gateway"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "yes"
+  },
+  "license": "ISC",
+  "author": "Monu Rajbhar",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon index.js",
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "mongoose": "^9.3.2",
+    "nodemon": "^3.1.14"
+  }
+}
