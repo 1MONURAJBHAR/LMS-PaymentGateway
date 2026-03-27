@@ -91,7 +91,7 @@ export const getCurrentUserProfile = catchAsync(async (req, res) => {
     success: true,
     data: {
       ...user.toJSON(),
-      totalEnrolledCourses: user.totalEnrolledCourses,
+      totalEnrolledCourses: user.totalEnrolledCourses, //This is virtual, it is calculated on the go, and not present in model and in database.
     },
   });
 });
