@@ -8,6 +8,8 @@ import hpp from 'hpp';
 import cookieParser from 'cookie-parser';
 import cors from "cors";
 
+import healthRouter from "./routes/health.routes.js"
+
 dotenv.config();
 
 const app = express();
@@ -64,7 +66,7 @@ app.use(cors({
 
 
 //API Routes
-
+app.use("/health", healthRouter);
 
 
 
