@@ -7,10 +7,15 @@ import mongoSanitize from 'express-mongo-sanitize'
 import hpp from 'hpp';
 import cookieParser from 'cookie-parser';
 import cors from "cors";
+import connectDB from "./database/db.js";
 
 import healthRouter from "./routes/health.routes.js"
 
+// Load environment variables
 dotenv.config();
+
+// Connect to database
+await connectDB();
 
 const app = express();
 const PORT = process.env.PORT;
