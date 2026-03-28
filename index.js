@@ -1,15 +1,21 @@
-import express from 'express';
-import dotenv from 'dotenv';
-import morgan from 'morgan';
-import rateLimit from 'express-rate-limit';
-import helmet from 'helmet';
-import mongoSanitize from 'express-mongo-sanitize'
-import hpp from 'hpp';
-import cookieParser from 'cookie-parser';
+import express from "express";
+import dotenv from "dotenv";
+import cookieParser from "cookie-parser";
 import cors from "cors";
+import helmet from "helmet";
+import morgan from "morgan";
+import mongoSanitize from "express-mongo-sanitize";
+//import xss from "xss-clean";   //fully deprecated
+import hpp from "hpp";
+import rateLimit from "express-rate-limit";
 import connectDB from "./database/db.js";
-
-import healthRouter from "./routes/health.routes.js"
+import userRoute from "./routes/user.route.js";
+import courseRoute from "./routes/course.route.js";
+import mediaRoute from "./routes/media.route.js";
+import purchaseRoute from "./routes/purchaseCourse.route.js";
+import courseProgressRoute from "./routes/courseProgress.route.js";
+import razorpayRoute from "./routes/razorpay.routes.js";
+import healthRoute from "./routes/health.routes.js";
 
 // Load environment variables
 dotenv.config();
@@ -18,43 +24,42 @@ dotenv.config();
 await connectDB();
 
 const app = express();
-const PORT = process.env.PORT;
+const PORT = process.env.PORT || 3000;
 
-//Global rate limiting
+// Use express.json() for all routes EXCEPT the webhook
+app.post(
+  "/api/v1/payments/webhook", 
+  express.raw({ type: "application/json" }), // Crucial for signature verification
+  razorpayWebhook
+);
 
-
+// Global rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  limit: 100, // Limit each IP to 100 requests per `window` (here, per 15 minutes).
-  message: "Too many requests from this IP. Please try later"
+  max: 100, // Limit each IP to 100 requests per windowMs
+  message: "Too many requests from this IP, please try again later.",
 });
 
-//Security middlewares
-// Apply the rate limiting middleware to all requests starting with /api.
-app.use(helmet());
-app.use(mongoSanitize());
-app.use(hpp());
-app.use('/api', limiter);
-app.use(cookieParser());
+// Security Middleware
+app.use(helmet()); // Set security HTTP headers
+// app.use(mongoSanitize()); // Data sanitization against NoSQL query injection
+// app.use(xss()); // Data sanitization against XSS
+app.use(hpp()); // Prevent HTTP Parameter Pollution
+app.use("/api", limiter); // Apply rate limiting to all routes
 
-//logging middleware
+// Logging Middleware
 if (process.env.NODE_ENV === "development") {
-    app.use(morgan("dev"));
+  app.use(morgan("dev"));
 }
 
-//Global error handler
-app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(err.status || 500).json({
-        status: "error",
-        message: err.message || "Internal server error",
-        ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
-    });
-});
+// Body Parser Middleware
+app.use(express.json({ limit: "10kb" })); // Body limit is 10kb
+app.use(express.urlencoded({ extended: true, limit: "10kb" }));
+app.use(cookieParser());
 
-
-//cors configuration
-app.use(cors({
+// CORS Configuration
+app.use(
+  cors({
     origin: process.env.CLIENT_URL || "http://localhost:5173",
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"],
@@ -67,28 +72,39 @@ app.use(cors({
       "Origin",
       "Accept",
     ],
-}))
+  }),
+);
 
+// API Routes
+app.use("/api/v1/media", mediaRoute);
+app.use("/api/v1/user", userRoute);
+app.use("/api/v1/course", courseRoute);
+app.use("/api/v1/purchase", purchaseRoute);
+app.use("/api/v1/progress", courseProgressRoute);
+app.use("/api/v1/razorpay", razorpayRoute);
+app.use("/health", healthRoute);
 
-//API Routes
-app.use("/health", healthRouter);
-
-
-
-//Body parser middleware
-app.use(express.json({ limit: '10kb' }));
-app.use(express.urlencoded({ extended: true, limit: '10kb' }));
-
-
-//It should always be at the bottom, 404 handler.
+// 404 Handler
 app.use((req, res) => {
-    res.status(404).json({
-        status: "error",
-        message: "Route not found !!"
-    })
-})
+  res.status(404).json({
+    status: "error",
+    message: "Route not found",
+  });
+});
 
+// Global Error Handler.
+app.use((err, req, res, next) => {
+  console.error(err);
+  return res.status(err.statusCode || 500).json({
+    status: "error",
+    message: err.message || "Internal server error",
+    ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
+  });
+});
 
+// Start server
 app.listen(PORT, () => {
-    console.log(`Server is running at port ${PORT} in ${process.env.NODE_ENV} mode`);    
-})
+  console.log(
+    ` Server running on port ${PORT} in ${process.env.NODE_ENV} mode`,
+  );
+});

@@ -34,10 +34,15 @@ const coursePurchaseSchema = new mongoose.Schema(
     paymentMethod: {
       type: String,
       required: [true, "Payment method is required"],
+      index: true,
     },
     paymentId: {
       type: String,
       required: [true, "Payment ID is required"],
+    },
+    transactionId: {
+      type: String,
+      // Not required initially because it's only generated after success
     },
     refundId: {
       type: String,
@@ -65,6 +70,14 @@ const coursePurchaseSchema = new mongoose.Schema(
 coursePurchaseSchema.index({ user: 1, course: 1 });
 coursePurchaseSchema.index({ status: 1 });
 coursePurchaseSchema.index({ createdAt: -1 });
+
+/*
+//or
+coursePurchaseSchema.index(
+  { user: 1, course: 1, status: 1 },
+  { unique: true, partialFilterExpression: { status: "pending" } }
+);
+*/
 
 /*
   Do chatGPT: return this.createdAt>thirtyDaysAgo; suppose i have purchased course 2 days ago and refundable window is 30 days the createdAt would be < thirtyDayAgo ?? is it correct
